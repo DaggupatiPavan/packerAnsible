@@ -33,6 +33,6 @@ build {
     ]
 
     provisioner "ansible" {
-        playbook_file = "../ansible/postgress_install.yaml"
+        playbook_file = "../ansible/postgresOptimization.yaml"
     }
 }
