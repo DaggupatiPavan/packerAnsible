@@ -11,7 +11,7 @@ packer {
     }
 }
 source "amazon-ebs" "ubuntu" {
-    ami_name      = "ubuntu"
+    ami_name      = "xyz"
     instance_type = "t2.micro"
     region        = "us-east-1"
     source_ami_filter {
