@@ -31,7 +31,9 @@ build {
     sources = [
         "source.amazon-ebs.ubuntu"
     ]
-
+    provisioner "shell" {
+        inline = ["sudo apt update"]
+    }
     provisioner "ansible" {
         playbook_file = "../ansible/postgress_install.yaml"
     }
