@@ -2,7 +2,7 @@
 - name: PostgreSQL installation on cluster nodes
   hosts: all
   tasks:
-    - name: update machine
+    - name: update nodes
       become: true
       apt:
         update_cache: yes
@@ -13,8 +13,8 @@
         name: "{{ item }}"
         state: present
       loop:
-        - postgresql-14
-        - postgresql-contrib-14
+        - postgresql
+        - postgresql-contrib
 
     - name: Start service
       become: true
