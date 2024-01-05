@@ -148,14 +148,14 @@
       shell: sudo kill $(cat /var/lib/postgresql/14/main/postmaster.pid)
       ignore_errors: true
 
-    - name: Start DB
-      command:
-        cmd: su - postgres -c "pg_ctl -D $PGDATA start"
-      register: start_db_status
+    # - name: Start DB
+    #   command:
+    #     cmd: su - postgres -c "pg_ctl -D $PGDATA start"
+    #   register: start_db_status
 
-    - name: Display status
-      debug:
-        var: start_db_status.stdout_lines
+    # - name: Display status
+    #   debug:
+    #     var: start_db_status.stdout_lines
 
   handlers:
     - name: Reload PostgreSQL
