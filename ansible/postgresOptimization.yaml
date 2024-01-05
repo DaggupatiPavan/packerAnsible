@@ -1,6 +1,6 @@
 ---
 - name: Postgres DB Config with optimisation
-  hosts: postgres
+  hosts: all
   become: true
   tasks:
     - name: Stop PostgreSQL if already running
