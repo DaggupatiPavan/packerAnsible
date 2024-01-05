@@ -18,7 +18,7 @@ source "amazon-ebs" "ubuntu" {
         filters = {
             name                = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
             root-device-type    = "ebs"
-            "block-device-mapping.volume-type": "gp2",
+            block-device-mapping.volume-type = "gp2",
             virtualization-type = "hvm"
         }
         most_recent = true
@@ -33,6 +33,6 @@ build {
     ]
 
     provisioner "ansible" {
-        playbook_file = "../ansible/postgresOptimization.yaml"
+        playbook_file = "../ansible/postgress_install.yaml"
     }
 }
