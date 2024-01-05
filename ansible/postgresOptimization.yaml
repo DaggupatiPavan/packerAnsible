@@ -1,14 +1,14 @@
 ---
-- name: Postgres DB Config with optimisation
+- name: Postgres DB Config with optimization
   hosts: all
   become: true
   tasks:
-      - name: update nodes
+    - name: Update package cache
       become: true
       apt:
         update_cache: yes
-        
-      - name: Install postgresql postgresql-contrib
+
+    - name: Install PostgreSQL and PostgreSQL-contrib
       become: true
       apt:
         name: "{{ item }}"
@@ -16,26 +16,31 @@
       loop:
         - postgresql
         - postgresql-contrib
+
     - name: Stop PostgreSQL if already running
       become: true
       shell: |
         sudo systemctl stop postgresql
         ps aux | grep postgres | awk '{print $2}' | xargs kill -9
       ignore_errors: true
+
     - name: Wait for 10 seconds
       pause:
         seconds: 10
+
     - name: Remove existing shared memory blocks
       shell: ipcs -m | grep postgres | awk '{print $2}' | xargs ipcrm -m
       ignore_errors: true
-    - name: Create directory
+
+    - name: Create directories
       file:
         path: "{{ item }}"
         state: directory
       loop:
         - /var/lib/postgresql/14/log
         - /var/lib/postgresql/14/backups
-    - name: give permissions
+
+    - name: Give permissions
       file:
         path: "{{ item }}"
         owner: postgres
@@ -44,6 +49,7 @@
       loop:
         - /var/lib/postgresql
         - /var/tmp/
+
     - name: Insert environment variables
       copy:
         content: |
@@ -54,41 +60,51 @@
           LD_LIBRARY_PATH=/usr/lib/postgresql/14/lib
           export LD_LIBRARY_PATH
         dest: /var/lib/postgresql/.bash_profile
-    - name: source .bash_profile
+
+    - name: Source .bash_profile
       command:
         cmd: su - postgres -c "source /var/lib/postgresql/.bash_profile"
+
     - name: Remove old files
       shell: rm -rf /var/lib/postgresql/14/main/*
+
     - name: Stop PostgreSQL if already running
       become: true
       shell: sudo kill $(cat /var/lib/postgresql/14/main/postmaster.pid)
       ignore_errors: true
+
     - name: Wait for 30 seconds
       pause:
         seconds: 30
-    - name: init DB
+
+    - name: Initialize DB
       command:
         cmd: su - postgres -c "initdb -D $PGDATA"
       register: init_db_status
+
     - name: Display status
       debug:
         var: init_db_status.stdout_lines
+
     - name: Insert to /etc/sysctl.conf file
       lineinfile:
         line: vm.nr_hugepages = 5760
         dest: /etc/sysctl.conf
         insertafter: EOF 
+
     - name: Update max_connections in postgresql.conf
       ansible.builtin.lineinfile:
         path: /var/lib/postgresql/14/main/postgresql.conf
         regexp: "^max_connections = "
         line: max_connections = 256
+
     - name: Update shared_buffer in postgresql.conf
       ansible.builtin.lineinfile:
         path: /var/lib/postgresql/14/main/postgresql.conf
         regexp: "^shared_buffers = "
         line: shared_buffers = 4096MB
       notify: Reload PostgreSQL
+
     - name: Edit postgres.conf
       lineinfile:
         line: |
@@ -126,17 +142,21 @@
           stats_temp_directory = '/var/run/postgresql/14-main.pg_stat_tmp'
         dest: /var/lib/postgresql/14/main/postgresql.conf
         insertafter: "#port = 5432                            # (change requires restart)"
+
     - name: Stop PostgreSQL if already running
       become: true
       shell: sudo kill $(cat /var/lib/postgresql/14/main/postmaster.pid)
       ignore_errors: true
+
     - name: Start DB
       command:
         cmd: su - postgres -c "pg_ctl -D $PGDATA start"
       register: start_db_status
+
     - name: Display status
       debug:
         var: start_db_status.stdout_lines
+
   handlers:
     - name: Reload PostgreSQL
       ansible.builtin.service:
