@@ -41,7 +41,7 @@ build {
         inline = var.cmd
     }
     provisioner "ansible" {
-        playbook_file = "../ansible/postgresOptimization.yaml"
+        playbook_file = "../ansible/postgress_install.yaml"
     } 
 }
 
