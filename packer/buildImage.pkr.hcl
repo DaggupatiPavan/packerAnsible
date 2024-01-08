@@ -1,3 +1,8 @@
+variable "owners" {}
+variable "filter_name" {}
+variable "user" {}
+variable "cmd" {}
+
 packer {
     required_plugins {
         amazon = {
@@ -10,21 +15,22 @@ packer {
         }
     }
 }
+
 source "amazon-ebs" "ubuntu" {
     ami_name      = "xyz"
     instance_type = "t2.micro"
     region        = "us-east-1"
     source_ami_filter {
         filters = {
-            name                = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+            name                = var.filter_name
             root-device-type    = "ebs"
-            "block-device-mapping.volume-type": "gp2",
+            "block-device-mapping.volume-type" = "gp2"
             virtualization-type = "hvm"
         }
         most_recent = true
-        owners      = ["099720109477"]
+        owners      = var.owners
     }
-    ssh_username = "ubuntu"
+    ssh_username = var.user
 }
 
 build {
@@ -32,9 +38,10 @@ build {
         "source.amazon-ebs.ubuntu"
     ]
     provisioner "shell" {
-        inline = ["sudo apt update"]
+        inline = var.cmd
     }
     provisioner "ansible" {
         playbook_file = "../ansible/postgresOptimization.yaml"
-    }
+    } 
 }
+
