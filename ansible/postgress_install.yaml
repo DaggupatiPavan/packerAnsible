@@ -1,13 +1,21 @@
 ---
-- name: PostgreSQL installation on cluster nodes
+- name: Postgres DB Config with optimization
   hosts: all
+  become: true
   tasks:
-    - name: update nodes
+    - name: Update package cache (Ubuntu)
       become: true
       apt:
         update_cache: yes
-    
-    - name: Install postgresql postgresql-contrib
+      when: ansible_distribution == 'Ubuntu'
+      
+    - name: Update package cache (Red Hat)
+      become: true
+      dnf:
+        update_cache: yes
+      when: ansible_distribution == 'Red Hat'
+
+    - name: Install PostgreSQL and PostgreSQL-contrib (Ubuntu)
       become: true
       apt:
         name: "{{ item }}"
@@ -15,9 +23,158 @@
       loop:
         - postgresql
         - postgresql-contrib
+      when: ansible_distribution == 'Ubuntu'
 
-    - name: Start service
+    - name: Install PostgreSQL and PostgreSQL-contrib (Red Hat)
       become: true
-      service:
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - postgresql
+        - postgresql-contrib
+      when: ansible_distribution == 'Red Hat'
+
+    - name: Stop PostgreSQL if already running
+      become: true
+      shell: |
+        sudo systemctl stop postgresql
+        ps aux | grep postgres | awk '{print $2}' | xargs kill -9
+      ignore_errors: true
+
+    - name: Wait for 10 seconds
+      pause:
+        seconds: 10
+
+    - name: Remove existing shared memory blocks
+      shell: ipcs -m | grep postgres | awk '{print $2}' | xargs ipcrm -m
+      ignore_errors: true
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /var/lib/postgresql/14/log
+        - /var/lib/postgresql/14/backups
+
+    - name: Give permissions
+      file:
+        path: "{{ item }}"
+        owner: postgres
+        group: postgres
+        recurse: yes
+      loop:
+        - /var/lib/postgresql
+        - /var/tmp/
+
+    - name: Insert environment variables
+      copy:
+        content: |
+          PGDATA=/var/lib/postgresql/14/main
+          export PGDATA
+          PATH=$PATH:$HOME:/usr/bin:/usr/local/bin:/usr/lib/postgresql/14/bin
+          export PATH
+          LD_LIBRARY_PATH=/usr/lib/postgresql/14/lib
+          export LD_LIBRARY_PATH
+        dest: /var/lib/postgresql/.bash_profile
+
+    - name: Source .bash_profile
+      command:
+        cmd: su - postgres -c "source /var/lib/postgresql/.bash_profile"
+
+    - name: Remove old files
+      shell: rm -rf /var/lib/postgresql/14/main/*
+
+    - name: Stop PostgreSQL if already running
+      become: true
+      shell: sudo kill $(cat /var/lib/postgresql/14/main/postmaster.pid)
+      ignore_errors: true
+
+    - name: Wait for 30 seconds
+      pause:
+        seconds: 30
+
+    - name: Initialize DB
+      command:
+        cmd: su - postgres -c "initdb -D $PGDATA"
+      register: init_db_status
+
+    - name: Display status
+      debug:
+        var: init_db_status.stdout_lines
+
+    - name: Insert to /etc/sysctl.conf file
+      lineinfile:
+        line: vm.nr_hugepages = 5760
+        dest: /etc/sysctl.conf
+        insertafter: EOF 
+
+    - name: Update max_connections in postgresql.conf
+      ansible.builtin.lineinfile:
+        path: /var/lib/postgresql/14/main/postgresql.conf
+        regexp: "^max_connections = "
+        line: max_connections = 256
+
+    - name: Update shared_buffer in postgresql.conf
+      ansible.builtin.lineinfile:
+        path: /var/lib/postgresql/14/main/postgresql.conf
+        regexp: "^shared_buffers = "
+        line: shared_buffers = 4096MB
+      notify: Reload PostgreSQL
+
+    - name: Edit postgres.conf
+      lineinfile:
+        line: |
+          listen_addresses= 'localhost'
+          port = 5432 
+          huge_pages = on
+          temp_buffers = 512MB
+          work_mem = 512MB
+          maintenance_work_mem = 256MB
+          autovacuum_work_mem = -1
+          max_stack_depth = 5MB
+          max_files_per_process = 4000
+          effective_io_concurrency = 32
+          wal_level = minimal
+          synchronous_commit = off
+          wal_buffers = 512MB
+          checkpoint_timeout = 1h
+          checkpoint_completion_target = 1
+          checkpoint_warning = 0
+          max_wal_senders = 0
+          log_destination = 'stderr'
+          logging_collector = on
+          log_directory = 'log'
+          log_filename = 'postgresql-%a.log'
+          log_truncate_on_rotation = on
+          log_rotation_age = 1d
+          log_rotation_size = 0
+          log_min_messages = error
+          log_min_error_statement = error
+          log_line_prefix = '%m [%p] '
+          max_locks_per_transaction = 64
+          max_pred_locks_per_transaction = 64
+          external_pid_file = '/var/run/postgresql/14-main.pid'
+          unix_socket_directories = '/var/run/postgresql'
+          stats_temp_directory = '/var/run/postgresql/14-main.pg_stat_tmp'
+        dest: /var/lib/postgresql/14/main/postgresql.conf
+        insertafter: "#port = 5432                            # (change requires restart)"
+
+    - name: Stop PostgreSQL if already running
+      become: true
+      shell: sudo kill $(cat /var/lib/postgresql/14/main/postmaster.pid)
+      ignore_errors: true
+
+  handlers:
+    - name: Reload PostgreSQL (Ubuntu)
+      ansible.builtin.service:
         name: postgresql
-        state: started
+        state: reloaded
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Reload PostgreSQL (Red Hat)
+      ansible.builtin.systemd:
+        name: postgresql
+        state: reloaded
+      when: ansible_distribution == 'Red Hat' and ansible_distribution_version | version_compare('7', '>=')  # assuming Red Hat 7 or later
