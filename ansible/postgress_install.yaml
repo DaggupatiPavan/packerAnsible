@@ -123,7 +123,7 @@
         line: shared_buffers = 4096MB
       notify: Reload PostgreSQL1
 
-      - name: Update shared_buffer in Redhat postgresql.conf
+    - name: Update shared_buffer in redhat postgresql.conf
       ansible.builtin.lineinfile:
         path: /var/lib/postgresql/14/main/postgresql.conf
         regexp: "^shared_buffers = "
