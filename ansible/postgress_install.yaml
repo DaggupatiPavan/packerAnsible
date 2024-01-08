@@ -121,7 +121,16 @@
         path: /var/lib/postgresql/14/main/postgresql.conf
         regexp: "^shared_buffers = "
         line: shared_buffers = 4096MB
-      notify: Reload PostgreSQL
+      notify: Reload PostgreSQL1
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Update shared_buffer in postgresql.conf
+      ansible.builtin.lineinfile:
+        path: /var/lib/postgresql/14/main/postgresql.conf
+        regexp: "^shared_buffers = "
+        line: shared_buffers = 4096MB
+      notify: Reload PostgreSQL2
+      when: ansible_distribution == 'Red Hat'
 
     - name: Edit postgres.conf
       lineinfile:
@@ -167,13 +176,13 @@
       ignore_errors: true
 
   handlers:
-    - name: Reload PostgreSQL (Ubuntu)
+    - name: Reload PostgreSQL1
       ansible.builtin.service:
         name: postgresql
         state: reloaded
       when: ansible_distribution == 'Ubuntu'
 
-    - name: Reload PostgreSQL (Red Hat)
+    - name: Reload PostgreSQL2
       ansible.builtin.systemd:
         name: postgresql
         state: reloaded
