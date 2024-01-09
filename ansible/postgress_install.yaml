@@ -9,11 +9,11 @@
         update_cache: yes
       when: ansible_distribution == 'Ubuntu'
       
-    - name: Update package cache (Red Hat)
+    - name: Update package cache (Red Hat Enterprise Linux)
       become: true
       dnf:
         update_cache: yes
-      when: ansible_distribution == 'Red Hat'
+      when: ansible_distribution == 'Red Hat Enterprise Linux'
 
     - name: Install PostgreSQL and PostgreSQL-contrib (Ubuntu)
       become: true
@@ -25,7 +25,7 @@
         - postgresql-contrib
       when: ansible_distribution == 'Ubuntu'
 
-    - name: Install PostgreSQL and PostgreSQL-contrib (Red Hat)
+    - name: Install PostgreSQL and PostgreSQL-contrib (Red Hat Enterprise Linux)
       become: true
       yum:
         name: "{{ item }}"
@@ -33,7 +33,7 @@
       loop:
         - postgresql
         - postgresql-contrib
-      when: ansible_distribution == 'Red Hat'
+      when: ansible_distribution == 'Red Hat Enterprise Linux'
 
     - name: Stop PostgreSQL if already running
       become: true
@@ -69,7 +69,7 @@
         - /var/tmp/
       when: ansible_distribution == 'Ubuntu'
 
-    - name: Give permissions (Red Hat)
+    - name: Give permissions (Red Hat Enterprise Linux)
       file:
         path: "{{ item }}"
         owner: postgres
@@ -78,7 +78,7 @@
       loop:
         - /var/lib/postgresql
         - /var/tmp/
-      when: ansible_distribution == 'Red Hat'
+      when: ansible_distribution == 'Red Hat Enterprise Linux'
 
     - name: Insert environment variables
       copy:
@@ -196,4 +196,4 @@
       ansible.builtin.systemd:
         name: postgresql
         state: reloaded
-      when: ansible_distribution == 'Red Hat' and ansible_distribution_version | version_compare('7', '>=')  # assuming Red Hat 7 or later
+      when: ansible_distribution == 'Red Hat Enterprise Linux' and ansible_distribution_version | version_compare('7', '>=')  # assuming Red Hat Enterprise Linux 7 or later
