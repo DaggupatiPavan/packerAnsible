@@ -58,7 +58,7 @@
         - /var/lib/postgresql/14/log
         - /var/lib/postgresql/14/backups
 
-    - name: Give permissions
+    - name: Give permissions (Ubuntu)
       file:
         path: "{{ item }}"
         owner: postgres
@@ -67,6 +67,18 @@
       loop:
         - /var/lib/postgresql
         - /var/tmp/
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Give permissions (Red Hat)
+      file:
+        path: "{{ item }}"
+        owner: postgres
+        group: postgres
+        recurse: yes
+      loop:
+        - /var/lib/postgresql
+        - /var/tmp/
+      when: ansible_distribution == 'Red Hat'
 
     - name: Insert environment variables
       copy:
